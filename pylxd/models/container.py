@@ -13,6 +13,7 @@
 #    under the License.
 import collections
 import time
+import os
 
 import six
 from six.moves.urllib import parse
@@ -140,6 +141,54 @@ class Container(model.Model):
             response = (self._client.api.containers[self._container.name]
                         .files.get(params={'path': filepath}))
             return response.content
+
+        def recursive_put(self, src, dst):
+            """Recursively push directory to the container.
+
+            Recursively pushes directory to the containers
+            named by the `dst`
+
+            :param src: The source path of directory to copy.
+            :type filepath: str
+            :param dst: The destination path in the container
+                    of directory to copy
+            :type filepath: str
+            """
+            norm_src = os.path.normpath(src)
+            if not os.path.isdir(norm_src):
+                raise NotADirectoryError(
+                    "'src' parameter must be a directory "
+                )
+
+            headers = {
+                'X-LXD-type': 'directory'
+            }
+
+            idx = len(os.path.dirname(norm_src))
+            dst_items = collections.defaultdict(dict)
+
+            for path, dirname, files in os.walk(norm_src):
+                dst_path = os.path.normpath(os.path.join(
+                    dst, path[idx:].lstrip(os.path.sep)))
+                # create directory
+                if path not in dst_items:
+                    headers = {
+                        'X-LXD-type': 'directory'
+                    }
+                    (self._client.api.containers[self._container.name]
+                     .files.post(params={'path': dst_path},
+                                 headers=headers))
+
+                # copy files
+                responses = []
+                for f in files:
+                    src_file = os.path.join(path, f)
+                    response = self._container.files.put(
+                        os.path.join(dst_path, f),
+                        data=open(src_file, 'rb').read()
+                    )
+                    responses.append(response)
+            return all(responses)
 
     @classmethod
     def exists(cls, client, name):
