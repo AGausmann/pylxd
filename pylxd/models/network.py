@@ -41,6 +41,12 @@ class Network(model.Model):
             networks.append(cls(client, name=name))
         return networks
 
+    @classmethod
+    def create(cls, client, config):
+        response = client.api.networks.post(json=config)
+
+        return cls(client, **config)
+
     @property
     def api(self):
         return self.client.api.networks[self.name]
@@ -50,5 +56,4 @@ class Network(model.Model):
         raise NotImplementedError('save is not implemented')
 
     def delete(self):
-        """Delete is not available for networks."""
-        raise NotImplementedError('delete is not implemented')
+        response = self.api.delete()
