@@ -239,6 +239,13 @@ class Container(model.Model):
         self.snapshots = managers.SnapshotManager(self.client, self)
         self.files = self.FilesManager(self.client, self)
 
+    def delete(self, wait=False):
+        response = self.api.delete(json={})
+
+        if wait:
+            self.client.operations.wait_for_operation(
+                response.json()['operation'])
+
     def rename(self, name, wait=False):
         """Rename a container."""
         response = self.api.post(json={'name': name})
